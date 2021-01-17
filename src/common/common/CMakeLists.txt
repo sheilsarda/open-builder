@@ -1,11 +1,20 @@
 
 add_library(ob-common
-    file_io.cpp
+    util.cpp
+    maths.cpp
     debug.cpp
-    network/net_host.cpp
+
+    network/enet.cpp
+    network/packet.cpp
+
+    lua/script_engine.cpp
+    lua/util_api.cpp
+
     world/chunk.cpp
     world/chunk_manager.cpp
     world/coordinate.cpp
+    world/voxel_data.cpp
+    world/biome.cpp
 )
 
 set_flags(ob-common)

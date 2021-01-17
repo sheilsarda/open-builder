@@ -1,18 +1,55 @@
 
 add_library(ob-client
     input/keyboard.cpp
-    gl/gl_vertex_array.cpp
-    gl/texture_atlas.cpp
-    gl/gl_shader.cpp
-    gl/gl_textures.cpp
+
+    gl/textures.cpp
+    gl/shader.cpp
+    gl/font.cpp
+    gl/framebuffer.cpp
+    gl/vertex_array.cpp
     gl/gl_errors.cpp
-    network/client_commands.cpp
-    client.cpp
-    maths.cpp
+    gl/primitive.cpp
+
+    client_state_controller.cpp
     client_engine.cpp
+
+    game/chunk_mesh.cpp
+    game/chunk_mesh_generation.cpp
+    game/client_world.cpp
+    game/game.cpp
+    game/game_def.cpp
+    game/game_type.cpp
+    game/player.cpp
+
+
+    lua/client_lua_callback.cpp
+    lua/gui_api.cpp
+    lua/gui_widget_api.cpp
+    lua/client_input_api.cpp
+    lua/client_control_api.cpp
+
+    gui/overlay.cpp
+    gui/overlay_factory.cpp
+    gui/gui_system.cpp
+    
+    gui/component/rectangle_component.cpp
+    gui/component/text_component.cpp
+
+    gui/widget/widget.cpp
+    gui/widget/image_widget.cpp
+    gui/widget/label_widget.cpp
+    gui/widget/button_widget.cpp
+    gui/widget/text_box_widget.cpp
+    gui/widget/widget_helper.cpp
+    gui/widget/checkbox_widget.cpp
+
     window.cpp
-    world/chunk_mesh_generation.cpp
-    world/chunk_mesh.cpp
+
+    network/client.cpp
+
+    renderer/camera.cpp
+    renderer/gui_renderer.cpp
+    renderer/chunk_renderer.cpp
 )
 
 set_flags(ob-client)
@@ -21,6 +58,7 @@ set_flags(ob-client)
 target_link_libraries(ob-client 
     glad
     ob-common
+    ob-server
     Threads::Threads 
     ${SFML_LIBRARIES} 
     ${SFML_DEPENDENCIES}

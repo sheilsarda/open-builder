@@ -3,14 +3,20 @@
 #
 
 .vscode
+tags
 
 *.temp
 
 open-builder/
+OpenBuilder/
+*.zip
+
+texture_packs/ElijahHyper
 
 *.srctrlprj
 *.srctrldb
 *.srctrlbm
+
 
 #
 #   Linux
@@ -18,6 +24,9 @@ open-builder/
 
 build/
 bin/
+custom_run.sh
+zcustom_run.sh
+ybuild.sh
 
 #
 #   Windows
@@ -40,3 +49,6 @@ Release/
 UnitTests/
 open-builder-unit-tests/
 
+# Experimental 
+
+experimental/

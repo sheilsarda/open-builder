@@ -1,87 +1,113 @@
 #include "client_engine.h"
 
-#include "client.h"
-#include "gl/gl_errors.h"
+#include "client_config.h"
+#include "gl/primitive.h"
+#include "lua/client_lua_api.h"
 #include "window.h"
-#include <common/debug.h>
-#include <glad/glad.h>
-#include <iostream>
 
-namespace {
-struct FPSCounter final {
-    float frameCount = 0;
-    sf::Clock timer;
-
-    void update()
-    {
-        frameCount++;
-        if (timer.getElapsedTime() > sf::seconds(2)) {
-            auto time = timer.getElapsedTime();
-
-            float fps = frameCount / time.asSeconds();
-            float frameTime = time.asMilliseconds() / frameCount;
-
-            std::cout << "==============\nAverage Current Performance\nFPS: "
-                      << fps << "\nFrame time: " << frameTime << "ms\n\n";
-            frameCount = 0;
-            timer.restart();
-        }
-    }
-};
-} // namespace
-
-EngineStatus runClientEngine(const ClientConfig &config)
+bool ClientEngine::init(sf::Window& window)
 {
-    // Create the window
-    Window window(config);
-    window.window.setMouseCursorVisible(false);
+    mp_window = &window;
 
-    // Setup OpenGL
-    if (!gladLoadGL()) {
-        return EngineStatus::GLInitError;
-    }
+    // Init all the lua api stuff
+    m_luaCallbacks.initCallbacks(m_lua);
+    luaInitGuiWidgetApi(m_lua);
+    luaInitInputApi(m_lua, window, m_inputState);
+    luaInitClientControlApi(m_lua, m_controller);
+    luaInitGuiApi(m_lua, m_gui, &m_guiRenderer);
 
-    glClearColor(0.25, 0.75, 1.0, 1.0);
-    glViewport(0, 0, window.width, window.height);
+    m_lua.runLuaFile("game/client/main.lua");
+    m_luaCallbacks.onClientStartup();
 
-    glCheck(glEnable(GL_DEPTH_TEST));
-    // glCheck(glEnable(GL_CULL_FACE));
-    // glCheck(glCullFace(GL_BACK));
+    m_guiRenderTarget.create(GUI_WIDTH, GUI_HEIGHT);
+    m_worldRenderTarget.create(ClientConfig::get().windowHeight,
+                               ClientConfig::get().windowWidth);
 
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    m_screenShader.create("minimal", "minimal");
+    m_screenBuffer = makeScreenQuadVertexArray();
+    return true;
+}
 
-    Client Client;
-    Keyboard keyboard;
-    EngineStatus status = EngineStatus::Ok;
-    FPSCounter counter;
+void ClientEngine::runClient()
+{
+    while (mp_window->isOpen()) {
+        pollWindowEvents();
+        m_game.handleInput(m_keyboard, m_inputState);
+        update();
+        render();
 
-    if (!Client.init(window.aspect)) {
-        return EngineStatus::CouldNotConnect;
-    }
-
-    LOG("Client", "Starting game.");
-    while (status == EngineStatus::Ok) {
-        // Input
-        status = window.pollEvents(
-            keyboard, [&Client](auto key) { Client.onKeyRelease(key); });
-
-        Client.handleInput(window.window, keyboard);
-
-        // Update
-        Client.update();
-
-        // Render
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        Client.render();
-        window.window.display();
-
-        // Stats and stuff
-        counter.update();
-        if (status == EngineStatus::Ok) {
-            status = Client.currentStatus();
+        if (!m_controller.executeAction(m_game, m_luaCallbacks)) {
+            mp_window->close();
         }
     }
-    window.window.close();
-    Client.endGame();
-    return status;
+}
+
+void ClientEngine::update()
+{
+    static sf::Clock clock;
+    m_fpsCounter.update();
+    m_game.tick(clock.restart().asSeconds());
+    m_gui.update();
+    if (((int)m_fpsCounter.frameCount % 256) == 0) {
+        std::cout << m_fpsCounter.frameTime << '\n';
+    }
+}
+
+void ClientEngine::render()
+{
+    glEnable(GL_DEPTH_TEST);
+
+    // World
+    m_worldRenderTarget.bind();
+    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    m_game.render();
+
+    // GUI
+    m_guiRenderTarget.bind();
+    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    m_gui.render(m_guiRenderer);
+
+    // Buffer to window
+    gl::unbindFramebuffers(ClientConfig::get().windowWidth,
+                           ClientConfig::get().windowHeight);
+    glDisable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT);
+    auto drawable = m_screenBuffer.getDrawable();
+    drawable.bind();
+    m_screenShader.bind();
+
+    m_worldRenderTarget.bindTexture();
+    drawable.draw();
+
+    glEnable(GL_BLEND);
+
+    m_guiRenderTarget.bindTexture();
+    drawable.draw();
+
+    mp_window->display();
+    glDisable(GL_BLEND);
+}
+
+void ClientEngine::pollWindowEvents()
+{
+    sf::Event event;
+    while (mp_window->pollEvent(event)) {
+        if (mp_window->hasFocus()) {
+            m_keyboard.update(event);
+            m_gui.handleEvent(event);
+            m_game.handleEvent(event);
+        }
+        switch (event.type) {
+            case sf::Event::MouseWheelScrolled:
+                m_luaCallbacks.onMouseWheelScroll(event.mouseWheelScroll);
+                break;
+
+            case sf::Event::KeyReleased:
+                m_luaCallbacks.onKeyboardKeyReleased(event.key.code);
+                break;
+
+            default:
+                break;
+        }
+    }
 }

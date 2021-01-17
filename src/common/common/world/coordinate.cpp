@@ -1,13 +1,19 @@
 #include "coordinate.h"
 
 #include "world_constants.h"
+#include <cmath>
 
-int toLocalBlockIndex(const BlockPosition &position)
+int toLocalVoxelIndex(const VoxelPosition& position)
 {
     return position.y * (CHUNK_AREA) + position.z * CHUNK_SIZE + position.x;
 }
 
-ChunkPosition toChunkPosition(const BlockPosition &position)
+ChunkPosition worldToChunkPosition(const glm::vec3& position)
+{
+    return toChunkPosition(toVoxelPosition(position));
+}
+
+ChunkPosition toChunkPosition(const VoxelPosition& position)
 {
     int x = position.x;
     int y = position.y;
@@ -20,7 +26,23 @@ ChunkPosition toChunkPosition(const BlockPosition &position)
     };
 }
 
-BlockPosition toLocalBlockPosition(const BlockPosition &position)
+ChunkPosition toChunkPosition(float xp, float yp, float zp)
+{
+    int x = static_cast<int>(xp);
+    int y = static_cast<int>(yp);
+    int z = static_cast<int>(zp);
+    return toChunkPosition({x, y, z});
+}
+
+VoxelPosition toLocalVoxelPosition(float xp, float yp, float zp)
+{
+    int x = static_cast<int>(xp);
+    int y = static_cast<int>(yp);
+    int z = static_cast<int>(zp);
+    return toLocalVoxelPosition({x, y, z});
+}
+
+VoxelPosition toLocalVoxelPosition(const VoxelPosition& position)
 {
     // Deals with negative coordinates too
     return {(CHUNK_SIZE + (position.x % CHUNK_SIZE)) % CHUNK_SIZE,
@@ -28,10 +50,18 @@ BlockPosition toLocalBlockPosition(const BlockPosition &position)
             (CHUNK_SIZE + (position.z % CHUNK_SIZE)) % CHUNK_SIZE};
 }
 
-BlockPosition toGlobalBlockPosition(const BlockPosition &blockPosition,
-                                    const ChunkPosition &localChunkPosition)
+VoxelPosition toGlobalVoxelPosition(const VoxelPosition& voxelPosition,
+                                    const ChunkPosition& localChunkPosition)
 {
-    return {localChunkPosition.x * CHUNK_SIZE + blockPosition.x,
-            localChunkPosition.y * CHUNK_SIZE + blockPosition.y,
-            localChunkPosition.z * CHUNK_SIZE + blockPosition.z};
+    return {localChunkPosition.x * CHUNK_SIZE + voxelPosition.x,
+            localChunkPosition.y * CHUNK_SIZE + voxelPosition.y,
+            localChunkPosition.z * CHUNK_SIZE + voxelPosition.z};
+}
+
+VoxelPosition toVoxelPosition(const glm::vec3& vec)
+{
+    auto x = static_cast<i32>(std::floor(vec.x));
+    auto y = static_cast<i32>(std::floor(vec.y));
+    auto z = static_cast<i32>(std::floor(vec.z));
+    return {x, y, z};
 }

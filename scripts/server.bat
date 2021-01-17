@@ -1,1 +1,2 @@
-.\Release\open-builder.exe -server 4
+@echo off
+.\Release\OpenBuilder.exe -server 4
